@@ -1,0 +1,123 @@
+max_iterations: 20
+checkpoint_interval: 2
+log_level: "INFO"
+
+# LLM configuration
+llm:
+
+  primary_model: "gemini-2.5-flash"
+  primary_model_weight: 1.0
+  api_base: "https://generativelanguage.googleapis.com/v1beta/openai/"
+  temperature: 0.7
+  max_tokens: 120000
+
+  timeout: 200                         # Timeout for API requests in seconds
+  retries: 3                          # Number of retries for failed requests
+  retry_delay: 5    
+
+# Prompt configuration
+prompt:
+  system_message: |
+    You are an expert researcher in **transactional concurrency control**.
+
+    Your task is to implement and iteratively improve a **concurrency control
+    (CC) algorithm** for an in-memory versioned key–value store. 
+    If you think the current impelemtnation can be improved, you can modify the whole protocol to something better. 
+
+    The evaluator will run many concurrent workloads against your CC
+    implementation, log the actual get/put operations that hit the storage
+    engine, and construct a precedence graph to check **conflict-serializability**
+    and **progress** (no stalled threads under deadlock-prone workloads).
+
+    The only code the system will evolve is inside the `EVOLVE-BLOCK` in
+    `initial_program.py`, where a class derived from `ConcurrencyControl` is
+    defined (e.g. `GeneratedCC`). Do NOT modify any code outside the evolve
+    block.
+
+    You are given:
+      - A `Transaction` dataclass with fields:
+          * `txid: int` – unique transaction identifier
+          * `start_ts: int` – logical start timestamp
+          * `status: TxStatus` – ACTIVE / COMMITTED / ABORTED
+          * `read_set: Dict[str, int]` – keys read and their version timestamps
+          * `write_set: Dict[str, Any]` – buffered writes, applied on commit
+          * `meta: Dict[str, Any]` – free-form per-transaction metadata
+      - A `CommitResult` dataclass with:
+          * `ok: bool`
+          * `reason: Optional[str]`
+          * `commit_ts: Optional[int]`
+      - An abstract base class `ConcurrencyControl` with methods you must
+        implement:
+          * `begin(self, store: VersionedKVStore) -> Transaction`
+          * `read(self, txn: Transaction, key: str, store: VersionedKVStore) -> Optional[Any]`
+          * `write(self, txn: Transaction, key: str, value: Any, store: VersionedKVStore) -> None`
+          * `commit(self, txn: Transaction, store: VersionedKVStore) -> CommitResult`
+          * `rollback(self, txn: Transaction, store: VersionedKVStore) -> None`
+      - A `VersionedKVStore` that you must treat as an opaque storage engine and
+        only access via:
+          * `get(key: str, ts: int) -> Optional[Any]`
+          * `put(writes: Dict[str, Any], commit_ts: int) -> None`
+
+    Additionally, a factory function `build_cc() -> ConcurrencyControl` is
+    defined outside the evolve block; you should **not** change its signature,
+    but you may change which concrete CC class it instantiates as you evolve
+    the algorithm.
+
+    The evaluator will:
+      - Create a fresh CC instance via `build_cc()`
+      - Run several concurrent workloads (counters, bank transfers, deadlock-
+        prone key ordering)
+      - Build a precedence graph over committed transactions and check for
+        **cycles** (non-serializable behavior)
+      - Detect stalled threads under the deadlock-prone workload
+      - Compute metrics:
+          * `correctness`: fraction of scenarios that are serializable (no cycles)
+            and, for the deadlock workload, also stall-free
+          * `throughput`: average committed transactions per second
+          * `combined_score`: weighted combination, heavily favoring correctness
+
+    Design your CC algorithm so that:
+      - It never exposes non-serializable histories (no precedence cycles over
+        committed transactions).
+      - It handles the deadlock-prone workload without leaving threads stalled.
+      - It achieves as high a throughput as possible on multi-core machines.
+
+    You may:
+      - Maintain per-transaction metadata in `txn.meta`.
+      - Keep global data structures inside your CC class (e.g. lock tables,
+        wait-for graphs, timestamp allocators).
+      - Implement optimistic (OCC), pessimistic (2PL), or hybrid schemes, as
+        long as they use only the provided interfaces to interact with storage.
+
+    Do NOT:
+      - Modify `VersionedKVStore` or rely on its internals.
+      - Change the signatures of `begin`, `read`, `write`, `commit`, `rollback`,
+        or `build_cc`.
+
+  num_top_programs: 3
+  use_template_stochasticity: true
+
+# Database configuration
+database:
+  population_size: 40
+  archive_size: 20
+  num_islands: 3
+  elite_selection_ratio: 0.25
+  exploitation_ratio: 0.7
+
+  embedding_model: "text-embedding-3-small"
+  similarity_threshold: 0.99
+
+# Evaluator configuration
+evaluator:
+  timeout: 120
+  cascade_evaluation: false
+  parallel_evaluations: 2
+  use_llm_feedback: false
+
+# Evolution settings
+diff_based_evolution: true
+allow_full_rewrites: false
+max_code_length: 100000
+
+

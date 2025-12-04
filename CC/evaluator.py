@@ -761,12 +761,12 @@ def evaluate(program_path: str) -> EvaluationResult:
 
         # Run four complementary scenarios
         scenarios = {
-            # "counters": _run_scenario(cc_factory, wl_counter, num_workers=8, duration_s=1.0, stall_threshold_s=0.5),
-            # "bank": _run_scenario(cc_factory, wl_bank, num_workers=8, duration_s=1.0, stall_threshold_s=0.5),
-            # "deadlock": _run_scenario(cc_factory, wl_deadlock_prone, num_workers=8, duration_s=5.0, stall_threshold_s=0.2),
+            "counters": _run_scenario(cc_factory, wl_counter, num_workers=8, duration_s=1.0, stall_threshold_s=0.5),
+            "bank": _run_scenario(cc_factory, wl_bank, num_workers=8, duration_s=1.0, stall_threshold_s=0.5),
+            "deadlock": _run_scenario(cc_factory, wl_deadlock_prone, num_workers=8, duration_s=5.0, stall_threshold_s=0.2),
             "tpcc": _run_scenario(
                 cc_factory, wl_tpcc, 
-                num_workers=16, duration_s=30.0, stall_threshold_s=0.5,
+                num_workers=32, duration_s=30.0, stall_threshold_s=0.5,
                 store_initializer=init_tpcc_data
             ),
         }
@@ -790,16 +790,16 @@ def evaluate(program_path: str) -> EvaluationResult:
                 correct += 1
             
             if name == "tpcc":
-                throughput_score += s["throughput"] * tpcc_coefficient
+                total_throughput += s["throughput"] * tpcc_coefficient
                 weighted_scenarios += tpcc_coefficient
             else:
-                throughput_score += s["throughput"] * other_coefficient
+                total_throughput += s["throughput"] * other_coefficient
                 weighted_scenarios += other_coefficient
 
         
 
         correctness = correct / total_scenarios if total_scenarios > 0 else 0.0
-        avg_throughput = throughput_score / weighted_scenarios if weighted_scenarios > 0 else 0.0
+        avg_throughput = total_throughput / weighted_scenarios if weighted_scenarios > 0 else 0.0
 
         # Map throughput to a bounded score
         throughput_score = avg_throughput / (100000.0 + avg_throughput)

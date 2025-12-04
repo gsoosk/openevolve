@@ -89,6 +89,6 @@ class EmbeddingClient:
         except Exception as e:
             logger.info(f"Error getting embedding: {e}")
             if single_code:
-                return [], 0.0
+                return []
             else:
-                return [[]], 0.0
+                return [[]]
