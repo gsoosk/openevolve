@@ -53,3 +53,9 @@ htmlcov/
 # For SR
 secrets.yaml
 problems
+
+# CC
+CC/benchmark/output.json
+CC/benchmark/benchmark/*
+
+nohup.out
